@@ -3,9 +3,16 @@ __pycache__/
 *.py[cod]
 *.so
 .Python
+
+# Virtual environment
 .venv/
 venv/
 env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
 
 # Django
 *.log
@@ -15,11 +22,6 @@ static/
 
 # Environment variables
 .env
-
-# IDE
-.vscode/
-.idea/
-*.swp
 
 # OS
 .DS_Store
