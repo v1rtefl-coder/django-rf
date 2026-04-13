@@ -6,7 +6,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('materials.urls')),
-    path('users/', include('users.urls')),  # Добавьте эту строку
+    path('api/users/', include('users.urls')),  # Изменено на api/users/
 ]
 
 if settings.DEBUG:
