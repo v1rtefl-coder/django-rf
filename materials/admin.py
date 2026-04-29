@@ -4,29 +4,24 @@ from .models import Course, Lesson
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('title', 'owner', 'description_preview', 'lessons_count')
+    list_display = ('title', 'owner', 'price', 'description_preview')
     list_filter = ('owner',)
     search_fields = ('title', 'description')
     readonly_fields = ('owner',)
 
-    def description_preview(self, obj):
-        return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
-
-    description_preview.short_description = 'Описание'
-
-    def lessons_count(self, obj):
-        return obj.lessons.count()
-
-    lessons_count.short_description = 'Количество уроков'
-
     fieldsets = (
         ('Основная информация', {
-            'fields': ('title', 'preview', 'description')
+            'fields': ('title', 'preview', 'description', 'price')
         }),
         ('Владелец', {
             'fields': ('owner',)
         }),
     )
+
+    def description_preview(self, obj):
+        return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
+
+    description_preview.short_description = 'Описание'
 
 
 @admin.register(Lesson)

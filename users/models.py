@@ -3,8 +3,6 @@ from django.db import models
 
 
 class UserManager(BaseUserManager):
-    """Кастомный менеджер пользователей без поля username"""
-
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('Email обязателен')
@@ -18,12 +16,6 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
-
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Суперпользователь должен иметь is_staff=True')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Суперпользователь должен иметь is_superuser=True')
-
         return self.create_user(email, password, **extra_fields)
 
 
@@ -48,24 +40,28 @@ class User(AbstractUser):
 
 
 class Payment(models.Model):
-    PAYMENT_METHODS = (
-        ('cash', 'Наличные'),
-        ('transfer', 'Перевод на счет'),
-    )
+    STATUS_CHOICES = [
+        ('pending', 'Ожидает оплаты'),
+        ('paid', 'Оплачен'),
+        ('failed', 'Ошибка'),
+    ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments', verbose_name='Пользователь')
-    payment_date = models.DateTimeField(auto_now_add=True, verbose_name='Дата оплаты')
-    course = models.ForeignKey('materials.Course', on_delete=models.CASCADE, null=True, blank=True,
-                               related_name='payments', verbose_name='Оплаченный курс')
-    lesson = models.ForeignKey('materials.Lesson', on_delete=models.CASCADE, null=True, blank=True,
-                               related_name='payments', verbose_name='Оплаченный урок')
-    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Сумма оплаты')
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, verbose_name='Способ оплаты')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments')
+    course = models.ForeignKey('materials.Course', on_delete=models.CASCADE, related_name='payments')
+    stripe_session_id = models.CharField(max_length=255, blank=True, null=True)
+    stripe_price_id = models.CharField(max_length=255, blank=True, null=True)
+    stripe_product_id = models.CharField(max_length=255, blank=True, null=True)
+    checkout_url = models.URLField(max_length=500, blank=True, null=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    amount_kopecks = models.IntegerField(default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Платеж'
         verbose_name_plural = 'Платежи'
-        ordering = ['-payment_date']
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.email} - {self.amount} руб."
+        return f"Платеж {self.id}"

@@ -1,27 +1,19 @@
 from rest_framework import serializers
 from .models import User, Payment
 
-
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'email', 'first_name', 'last_name', 'phone', 'city', 'avatar']
         read_only_fields = ['id']
 
-
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
-    password2 = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    password = serializers.CharField(write_only=True, required=True)
+    password2 = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = User
         fields = ['email', 'password', 'password2', 'first_name', 'last_name', 'phone', 'city']
-        extra_kwargs = {
-            'first_name': {'required': False},
-            'last_name': {'required': False},
-            'phone': {'required': False},
-            'city': {'required': False},
-        }
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -33,13 +25,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**validated_data)
         return user
 
+class PaymentInitiationSerializer(serializers.Serializer):
+    course_id = serializers.IntegerField(help_text="ID курса для оплаты")
 
-class PaymentSerializer(serializers.ModelSerializer):
-    user_email = serializers.CharField(source='user.email', read_only=True)
-    course_title = serializers.CharField(source='course.title', read_only=True, default=None)
-    lesson_title = serializers.CharField(source='lesson.title', read_only=True, default=None)
+class PaymentSessionSerializer(serializers.Serializer):
+    session_id = serializers.CharField(help_text="ID сессии в Stripe")
+    checkout_url = serializers.URLField(help_text="Ссылка для перехода на оплату")
+    payment_id = serializers.IntegerField(help_text="ID платежа в системе")
 
+class PaymentStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
-        fields = ['id', 'user', 'user_email', 'payment_date', 'course', 'course_title',
-                  'lesson', 'lesson_title', 'amount', 'payment_method']
+        fields = ['id', 'status', 'amount', 'created_at', 'updated_at']
