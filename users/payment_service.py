@@ -50,18 +50,13 @@ def create_payment_session(user, course_id, request):
 
         # 3. Формируем URL для редиректа
         base_url = request.build_absolute_uri('/').rstrip('/')
-        success_url = f"{base_url}/payment/success/?session_id={{CHECKOUT_SESSION_ID}}"
-        cancel_url = f"{base_url}/payment/cancel"
+        success_url = f"{base_url}/payment/success/"
+        cancel_url = f"{base_url}/payment/cancel/"
 
         # 4. Создаем сессию оплаты
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
-            line_items=[
-                {
-                    'price': price.id,
-                    'quantity': 1,
-                },
-            ],
+            line_items=[{'price': price.id, 'quantity': 1}],
             mode='payment',
             success_url=success_url,
             cancel_url=cancel_url,
