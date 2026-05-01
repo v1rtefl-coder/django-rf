@@ -5,6 +5,7 @@ from rest_framework import status
 from .models import Course, Lesson
 from .serializers import CourseSerializer, CourseWithLessonsSerializer, LessonSerializer
 from .paginators import CoursePaginator, LessonPaginator
+from .tasks import send_course_update_notification
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -32,16 +33,51 @@ class CourseViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
+        # Получаем старые значения до обновления
         course = self.get_object()
-        is_moderator = request.user.groups.filter(name='moderators').exists()
-        is_owner = course.owner == request.user
+        old_data = {
+            'title': course.title,
+            'description': course.description,
+            'price': course.price,
+        }
 
-        if not (is_moderator or is_owner):
-            return Response(
-                {"error": "Нет прав для редактирования этого курса"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        return super().update(request, *args, **kwargs)
+        # Выполняем обновление
+        response = super().update(request, *args, **kwargs)
+
+        # Проверяем, какие поля изменились
+        updated_fields = []
+        for field, old_value in old_data.items():
+            new_value = getattr(course, field)
+            if old_value != new_value:
+                updated_fields.append(field)
+
+        # Если есть изменения, отправляем уведомления
+        if updated_fields:
+            send_course_update_notification.delay(course.id, updated_fields)
+
+        return response
+
+    def partial_update(self, request, *args, **kwargs):
+        # Аналогично для частичного обновления
+        course = self.get_object()
+        old_data = {
+            'title': course.title,
+            'description': course.description,
+            'price': course.price,
+        }
+
+        response = super().partial_update(request, *args, **kwargs)
+
+        updated_fields = []
+        for field, old_value in old_data.items():
+            new_value = getattr(course, field)
+            if old_value != new_value:
+                updated_fields.append(field)
+
+        if updated_fields:
+            send_course_update_notification.delay(course.id, updated_fields)
+
+        return response
 
     def destroy(self, request, *args, **kwargs):
         course = self.get_object()

@@ -2,6 +2,8 @@ from datetime import timedelta
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from celery.schedules import crontab
+
 
 load_dotenv()
 
@@ -29,6 +31,7 @@ INSTALLED_APPS = [
     "django_filters",
     "rest_framework_simplejwt",
     'drf_spectacular',
+    'django_celery_beat',
 ]
 
 REST_FRAMEWORK = {
@@ -177,3 +180,29 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+
+CELERY_BROKER_URL = f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', 6379)}/{os.getenv('REDIS_DB', 0)}"
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    'deactivate-inactive-users': {
+        'task': 'users.tasks.deactivate_inactive_users',
+        'schedule': crontab(hour=0, minute=0),
+    },
+    'check-user-activity': {
+        'task': 'users.tasks.check_user_activity',
+        'schedule': crontab(hour=9, minute=0),
+    },
+}
+
+# Email settings (для отправки писем)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
