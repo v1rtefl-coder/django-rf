@@ -1,3 +1,9 @@
+# Docker
+.env.docker
+*.log
+celerybeat-schedule
+celerybeat.pid
+
 # Python
 __pycache__/
 *.py[cod]

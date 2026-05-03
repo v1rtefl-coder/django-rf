@@ -1,0 +1,132 @@
+version: '3.8'
+
+services:
+  # PostgreSQL база данных
+  db:
+    image: postgres:15-alpine
+    container_name: django_lms_db
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${DB_NAME:-django-rf}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lms_network
+
+  # Redis для Celery
+  redis:
+    image: redis:7-alpine
+    container_name: django_lms_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lms_network
+
+  # Django приложение
+  web:
+    build: .
+    container_name: django_lms_web
+    restart: unless-stopped
+    command: >
+      sh -c "
+        python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    volumes:
+      - .:/app
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - DOCKER=1
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    networks:
+      - lms_network
+
+  # Celery worker
+  celery:
+    build: .
+    container_name: django_lms_celery
+    restart: unless-stopped
+    command: celery -A config worker --loglevel=info --pool=solo
+    volumes:
+      - .:/app
+    environment:
+      - DOCKER=1
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    networks:
+      - lms_network
+
+  # Celery beat
+  celery-beat:
+    build: .
+    container_name: django_lms_celery_beat
+    restart: unless-stopped
+    command: celery -A config beat --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - DOCKER=1
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    networks:
+      - lms_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_volume:
+
+networks:
+  lms_network:
+    driver: bridge
