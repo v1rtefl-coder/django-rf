@@ -1,4 +1,6 @@
+
 name: CI/CD Pipeline
+
 on:
   push:
     branches: [ main, master ]
@@ -6,7 +8,7 @@ on:
     branches: [ main, master ]
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.12'  # �� Изменено с 3.11 на 3.12
 
 jobs:
   test:
@@ -53,6 +55,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run tests with coverage
       env:
+        SECRET_KEY: 'django-insecure-test-key-12345'
         DB_NAME: test_db
         DB_USER: test_user
         DB_PASSWORD: test_password
